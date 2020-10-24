@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -9,6 +10,11 @@ import (
 	"net/http"
 	"os"
 )
+
+type Webhook struct {
+	Destination string           `json:"destination"`
+	Events      []*linebot.Event `json:"events"`
+}
 
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 
@@ -26,6 +32,16 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	log.Print(request.Headers)
 	log.Print(request.Body)
+
+	var webhook Webhook
+
+	if err := json.Unmarshal([]byte(request.Body), &webhook); err != nil {
+		log.Print(err)
+		return events.APIGatewayProxyResponse{
+			StatusCode: http.StatusBadRequest,
+			Body:       fmt.Sprintf(`{"message":"%s"}`+"\n", http.StatusText(http.StatusBadRequest)),
+		}, nil
+	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
