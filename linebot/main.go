@@ -6,6 +6,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/line/line-bot-sdk-go/linebot"
+	"linebot/gurunavi"
 	"log"
 	"net/http"
 	"os"
@@ -48,12 +49,37 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		case linebot.EventTypeMessage:
 			switch m := event.Message.(type) {
 			case *linebot.TextMessage:
-				if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(m.Text)).Do(); err != nil {
-					log.Print(err)
-					return events.APIGatewayProxyResponse{
-						StatusCode: http.StatusInternalServerError,
-						Body:       fmt.Sprintf(`{"message":"%s"}`+"\n", http.StatusText(http.StatusBadRequest)),
-					}, nil
+				switch request.Path {
+				case "/parrot":
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(m.Text)).Do(); err != nil {
+						log.Print(err)
+						return events.APIGatewayProxyResponse{
+							StatusCode: http.StatusInternalServerError,
+							Body:       fmt.Sprintf(`{"message":"%s"}`+"\n", http.StatusText(http.StatusBadRequest)),
+						}, nil
+					}
+				case "/restaurants":
+					g, err := gurunavi.SearchRestaurants(m.Text)
+					if err != nil {
+						log.Print(err)
+						return events.APIGatewayProxyResponse{
+							StatusCode: http.StatusInternalServerError,
+							Body:       fmt.Sprintf(`{"message":"%s"}`+"\n", http.StatusText(http.StatusInternalServerError)),
+						}, nil
+					}
+
+					var t string
+
+					switch {
+					case g.Error != nil:
+						t = g.Error[0].Message
+					default:
+						t = TextRestaurants(g)
+					}
+
+					if _, err = bot.ReplyMessage(event.ReplyToken, linebot.NewTextMessage(t)).Do(); err != nil {
+						log.Fatal(err)
+					}
 				}
 			}
 		}
