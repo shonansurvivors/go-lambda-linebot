@@ -5,4 +5,4 @@ build:
 
 .PHONY: local
 local:
-	sam local start-api --env-vars .env.json
+	sam local start-api --env-vars .env.json --log-file debug.log
